@@ -1,0 +1,305 @@
+ARCHITECTURE OFFICIELLE – Trading Bach Bot V1
+1️⃣ Vue globale (Architecture en couches)
+Frontend (React)
+        ↓
+API Layer (FastAPI Routers)
+        ↓
+Service Layer (Business Logic)
+        ↓
+Domain Layer (Trading / ML / News Logic)
+        ↓
+Data Layer (Repositories + SQLite)
+        ↓
+External Providers (Market API, News RSS)
+2️⃣ Architecture Backend détaillée
+📂 Structure complète
+backend/
+│
+├── app/
+│   ├── main.py
+│   ├── config.py
+│   ├── dependencies.py
+│   │
+│   ├── core/
+│   │   ├── logger.py
+│   │   ├── scheduler.py
+│   │   └── security.py
+│   │
+│   ├── domain/
+│   │   ├── market/
+│   │   │   ├── indicators.py
+│   │   │   ├── signal_engine.py
+│   │   │   └── market_models.py
+│   │   │
+│   │   ├── news/
+│   │   │   ├── sentiment.py
+│   │   │   ├── news_classifier.py
+│   │   │   └── relevance_engine.py
+│   │   │
+│   │   └── portfolio/
+│   │       ├── portfolio_engine.py
+│   │       ├── risk_manager.py
+│   │       └── performance.py
+│   │
+│   ├── services/
+│   │   ├── trading_service.py
+│   │   ├── news_service.py
+│   │   └── portfolio_service.py
+│   │
+│   ├── repositories/
+│   │   ├── portfolio_repository.py
+│   │   ├── trade_repository.py
+│   │   └── market_repository.py
+│   │
+│   ├── providers/
+│   │   ├── market_provider.py
+│   │   └── news_provider.py
+│   │
+│   ├── schemas/
+│   │   ├── portfolio_schema.py
+│   │   ├── signal_schema.py
+│   │   └── news_schema.py
+│   │
+│   ├── models/
+│   │   ├── portfolio_model.py
+│   │   ├── trade_model.py
+│   │   └── market_model.py
+│   │
+│   └── routers/
+│       ├── portfolio_router.py
+│       ├── signal_router.py
+│       ├── news_router.py
+│       └── system_router.py
+│
+├── tests/
+├── database.db
+└── requirements.txt
+3️⃣ Rôle précis de chaque couche
+🧠 DOMAIN LAYER (cœur intelligent)
+
+Contient uniquement :
+
+Logique mathématique
+
+Calcul indicateurs
+
+Algorithme de décision
+
+Gestion du risque
+
+Simulation portefeuille
+
+⚠️ Cette couche ne connaît :
+
+Ni HTTP
+
+Ni FastAPI
+
+Ni base de données
+
+Elle doit être 100% pure Python.
+
+🛠️ SERVICES LAYER
+
+Orchestre les domaines.
+
+Exemple :
+
+trading_service appelle :
+
+market_provider
+
+signal_engine
+
+risk_manager
+
+portfolio_repository
+
+C’est le cerveau coordinateur.
+
+🗄️ REPOSITORIES LAYER
+
+Responsable uniquement de :
+
+Lire / écrire en base SQLite
+
+CRUD simple
+
+Aucune logique métier.
+
+🌐 PROVIDERS LAYER
+
+Interface avec l’extérieur :
+
+Yahoo Finance
+
+API marchés
+
+RSS
+
+Twitter scraping
+
+Doit être isolé pour pouvoir changer de fournisseur plus tard.
+
+🌍 ROUTERS (API Layer)
+
+Responsable uniquement de :
+
+Recevoir requête HTTP
+
+Appeler service
+
+Retourner réponse JSON
+
+4️⃣ Architecture Frontend
+📂 Structure React
+frontend/
+│
+├── src/
+│   ├── App.jsx
+│   ├── main.jsx
+│   │
+│   ├── layout/
+│   │   ├── Header.jsx
+│   │   └── DashboardLayout.jsx
+│   │
+│   ├── components/
+│   │   ├── NewsPanel.jsx
+│   │   ├── SignalPanel.jsx
+│   │   ├── PortfolioChart.jsx
+│   │   └── PositionsTable.jsx
+│   │
+│   ├── services/
+│   │   └── apiService.js
+│   │
+│   ├── hooks/
+│   │   └── usePortfolio.js
+│   │
+│   ├── types/
+│   │   └── types.js
+│   │
+│   └── pages/
+│       └── Dashboard.jsx
+│
+└── package.json
+5️⃣ Flux de fonctionnement complet
+🔁 Cycle automatique (Scheduler)
+
+Toutes les X minutes :
+
+1. Récupérer données marché
+2. Calculer indicateurs
+3. Récupérer news
+4. Calculer sentiment
+5. Générer signaux
+6. Appliquer règles de risque
+7. Ouvrir / fermer positions
+8. Mettre à jour portefeuille
+9. Sauvegarder
+
+Ce cycle est lancé par :
+
+core/scheduler.py
+6️⃣ Design des modules critiques
+📊 Signal Engine
+
+Entrées :
+
+Indicateurs techniques
+
+Score sentiment
+
+Volatilité
+
+Sortie :
+
+{
+  symbol: "AAPL",
+  probability_up: 0.72,
+  recommendation: "BUY",
+  confidence_score: 0.68
+}
+💰 Portfolio Engine
+
+Responsable :
+
+Achat
+
+Vente
+
+Calcul P/L
+
+Historique capital
+
+Stop loss / Take profit
+
+🛡️ Risk Manager
+
+Vérifie :
+
+Max 20% capital
+
+Exposition totale
+
+Stop loss
+
+Volatilité excessive
+
+7️⃣ Base de données (SQLite)
+
+Tables minimales :
+
+portfolio
+
+| id | capital | last_updated |
+
+trades
+
+| id | symbol | entry_price | quantity | status | entry_date | exit_date |
+
+portfolio_history
+
+| id | timestamp | total_value |
+
+news
+
+| id | title | source | sentiment_score | related_symbol |
+
+8️⃣ Architecture logique de l’IA
+
+V1 = simple mais propre :
+
+Score final = 
+0.6 * score_technique
++ 0.4 * score_sentiment
+
+Décision :
+
+0.7 → BUY
+
+< 0.3 → SELL
+
+sinon HOLD
+
+9️⃣ Séparation stricte des responsabilités
+Couche	Peut faire	Ne peut pas faire
+Domain	Maths, logique	HTTP, SQL
+Service	Orchestration	HTML
+Repository	SQL	Décision trading
+Router	HTTP	Calcul RSI
+Frontend	Affichage	Logique trading
+🔟 Scalabilité future prévue
+
+Cette architecture permet :
+
+Ajouter Deep Learning
+
+Ajouter broker réel
+
+Ajouter WebSocket temps réel
+
+Ajouter backtesting massif
+
+Ajouter multi-utilisateurs
+
+Sans refactor massif.
