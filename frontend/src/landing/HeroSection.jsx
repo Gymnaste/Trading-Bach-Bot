@@ -22,7 +22,7 @@ export default function HeroSection() {
                             <span className="text-gradient-cyan">sans le moindre risque.</span>
                         </h1>
                         <p className="text-lg text-gray-400 leading-relaxed mb-8 max-w-xl">
-                            Découvrez Trading Bach Bot. Inscrivez-vous, recevez{' '}
+                            Découvrez Axiom. Inscrivez-vous, recevez{' '}
                             <span className="text-white font-semibold">10 000 $ virtuels</span>, et laissez
                             notre intelligence artificielle analyser les actualités et les graphiques pour vous.
                         </p>
@@ -40,27 +40,13 @@ export default function HeroSection() {
                         transition={{ duration: 0.8, delay: 0.2 }}
                         className="relative"
                     >
-                        <div className="relative rounded-2xl overflow-hidden border border-white/10 shadow-2xl bg-gray-900 p-6">
-                            {/* Faux graphique animé */}
-                            <div className="flex items-end gap-1.5 h-48">
-                                {[40, 55, 45, 70, 60, 80, 65, 90, 75, 95, 85, 100, 88, 96].map((h, i) => (
-                                    <motion.div
-                                        key={i}
-                                        className="flex-1 rounded-t-sm"
-                                        style={{ background: h > 70 ? 'hsl(187,100%,50%)' : 'hsl(187,100%,50%,0.3)' }}
-                                        initial={{ height: 0 }}
-                                        animate={{ height: `${h}%` }}
-                                        transition={{ delay: 0.4 + i * 0.05, duration: 0.5 }}
-                                    />
-                                ))}
-                            </div>
-                            <div className="mt-3 flex justify-between text-xs text-gray-500">
-                                <span>Sept</span><span>Oct</span><span>Nov</span><span>Déc</span><span>Jan</span><span>Fév</span>
-                            </div>
-                            <div className="absolute top-4 right-4 text-right">
-                                <p className="text-xs text-gray-500">Rendement simulé</p>
-                                <p className="text-2xl font-bold text-[hsl(187,100%,50%)]">+142%</p>
-                            </div>
+                        <div className="relative rounded-2xl overflow-hidden border border-white/10 shadow-2xl bg-gray-900 aspect-video lg:aspect-square">
+                            <img
+                                src="/hero-trend.png"
+                                alt="Evolution du marché avec Axiom"
+                                className="w-full h-full object-cover"
+                            />
+                            <div className="absolute inset-0 bg-gradient-to-t from-gray-900/60 to-transparent" />
                         </div>
                         <div className="absolute -inset-4 -z-10 rounded-3xl bg-[hsl(187,100%,50%)]/5 blur-3xl" />
                     </motion.div>

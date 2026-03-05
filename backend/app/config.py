@@ -41,6 +41,6 @@ NEWS_RSS_FEEDS: list[str] = [
 ]
 
 # Application
-APP_NAME: str = "Trading Bach Bot"
+APP_NAME: str = "Axiom"
 APP_VERSION: str = "1.0.0"
 DEBUG: bool = os.getenv("DEBUG", "false").lower() == "true"

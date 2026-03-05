@@ -25,13 +25,16 @@ export default function StockDetailsModal({ symbol, onClose }) {
     const [buySL, setBuySL] = useState('')
     const [buyTP, setBuyTP] = useState('')
 
+    const [timeframe, setTimeframe] = useState('6mo')
+    const [chartLoading, setChartLoading] = useState(false)
+
     const fetchData = async () => {
         setLoading(true)
         setError(null)
         try {
             const results = await Promise.allSettled([
                 marketAPI.getInfo(symbol),
-                marketAPI.getHistory(symbol),
+                marketAPI.getHistory(symbol, timeframe),
                 portfolioAPI.getTradesBySymbol(symbol)
             ])
             if (results[0].status === 'fulfilled') setInfo(results[0].value.data)
@@ -44,10 +47,27 @@ export default function StockDetailsModal({ symbol, onClose }) {
         }
     }
 
+    const fetchHistoryOnly = async (newTimeframe) => {
+        setChartLoading(true)
+        try {
+            const res = await marketAPI.getHistory(symbol, newTimeframe)
+            setHistory(res.data.history || [])
+        } catch (err) {
+            console.error(err)
+        } finally {
+            setChartLoading(false)
+        }
+    }
+
     useEffect(() => {
         if (!symbol) return
         fetchData()
     }, [symbol])
+
+    useEffect(() => {
+        if (!symbol || loading) return // Ne pas relancer si on charge déjà tout
+        fetchHistoryOnly(timeframe)
+    }, [timeframe])
 
     if (!symbol) return null
 
@@ -298,9 +318,31 @@ export default function StockDetailsModal({ symbol, onClose }) {
                             )}
 
                             {/* Graphique */}
-                            <div className="bg-gray-800 rounded-xl p-4 h-[350px]">
-                                <h3 className="text-[10px] font-semibold text-gray-500 mb-4 uppercase tracking-wider">Évolution 6 Mois</h3>
-                                <div className="h-[280px]">
+                            <div className="bg-gray-800 rounded-xl p-4 h-[380px] relative">
+                                <div className="flex justify-between items-center mb-4">
+                                    <h3 className="text-[10px] font-semibold text-gray-500 uppercase tracking-wider">Évolution du prix</h3>
+                                    <div className="flex bg-gray-900 rounded-lg p-1 border border-gray-700">
+                                        {[
+                                            { label: '1J', value: '1d' },
+                                            { label: '1M', value: '1mo' },
+                                            { label: '1A', value: '1y' }
+                                        ].map((tf) => (
+                                            <button
+                                                key={tf.value}
+                                                onClick={() => setTimeframe(tf.value)}
+                                                className={`px-3 py-1 text-[10px] font-bold rounded-md transition-all ${timeframe === tf.value ? 'bg-sky-500 text-black shadow-lg shadow-sky-500/20' : 'text-gray-500 hover:text-white'}`}
+                                            >
+                                                {tf.label}
+                                            </button>
+                                        ))}
+                                    </div>
+                                </div>
+                                <div className="h-[280px] relative">
+                                    {chartLoading && (
+                                        <div className="absolute inset-0 bg-gray-800/50 backdrop-blur-[1px] z-10 flex items-center justify-center">
+                                            <div className="w-8 h-8 border-2 border-sky-500/30 border-t-sky-500 rounded-full animate-spin" />
+                                        </div>
+                                    )}
                                     <Line data={chartData} options={chartOptions} />
                                 </div>
                             </div>

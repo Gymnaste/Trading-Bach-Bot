@@ -1,5 +1,5 @@
 """
-chat_router.py — Chatbot interactif ET actionnable du Trading Bach Bot.
+chat_router.py — Chatbot interactif ET actionnable d'Axiom.
 Le bot peut non seulement répondre en langage naturel, mais aussi exécuter des actions
 sur le portefeuille (vendre, modifier TP/SL, changer profil de risque, etc.)
 """
@@ -15,11 +15,13 @@ router = APIRouter(prefix="/chat", tags=["Chat"])
 openai_service = OpenAIService()
 portfolio_service = PortfolioService()
 
+import json
+
 @router.post("")
-def chat_with_bot(message: str = Body(..., embed=True), db: Session = Depends(get_db), user_id: str = Depends(get_current_user_id)):
+def chat_with_bot(messages: list = Body(..., embed=True), db: Session = Depends(get_db), user_id: str = Depends(get_current_user_id)):
     """
-    Communique avec Trading Bach Bot via OpenAI.
-    Supporte le chat simple ET les actions sur le portefeuille.
+    Communique avec Axiom via OpenAI.
+    Supporte le chat avec historique et l'appel d'outils (Tool Calling).
     """
     summary = portfolio_service.get_portfolio_summary(db, user_id)
     open_positions = summary['positions_ouvertes']
@@ -36,60 +38,82 @@ def chat_with_bot(message: str = Body(..., embed=True), db: Session = Depends(ge
         f"Profil de risque actuel: {risk_profile}."
     )
 
-    # Appel à l'IA avec détection d'intentions
-    result = openai_service.get_actionable_response(message, context)
-    response_text = result.get("response", "Je n'ai pas pu générer de réponse.")
-    intent = result.get("intent")
-    params = result.get("params", {})
+    # Premier appel à l'IA avec context et tools
+    response_msg = openai_service.get_tool_calling_response(messages, context)
 
-    action_result = None
+    # Si l'IA n'est pas activée ou renvoie un dictionnaire simple d'erreur
+    if isinstance(response_msg, dict):
+        return {"response": response_msg.get("content", "Erreur IA")}
 
-    # Dispatch des actions selon l'intention détectée
-    if intent == "sell":
-        symbol = params.get("symbol", "").upper()
-        trade_id = params.get("trade_id")
+    # Gestion de la boucle Tool Calling
+    if getattr(response_msg, 'tool_calls', None):
+        # On ajoute la réponse de l'assistant à l'historique
+        messages.append({
+            "role": response_msg.role,
+            "content": response_msg.content,
+            "tool_calls": [
+                {
+                    "id": t.id,
+                    "type": "function",
+                    "function": {"name": t.function.name, "arguments": t.function.arguments}
+                } for t in response_msg.tool_calls
+            ]
+        })
 
-        if trade_id:
-            action_result = portfolio_service.close_position(db, user_id, trade_id)
-        elif symbol:
-            # Chercher la position ouverte pour ce symbole
-            trade = next((p for p in open_positions if p['symbol'] == symbol), None)
-            if trade:
-                action_result = portfolio_service.close_position(db, user_id, trade['id'])
-            else:
-                action_result = {"success": False, "error": f"Aucune position ouverte pour {symbol}"}
+        # On exécute chaque outil demandé
+        for tool_call in response_msg.tool_calls:
+            function_name = tool_call.function.name
+            try:
+                arguments = json.loads(tool_call.function.arguments)
+            except Exception:
+                arguments = {}
 
-    elif intent == "update_targets":
-        symbol = params.get("symbol", "").upper()
-        sl = params.get("stop_loss")
-        tp = params.get("take_profit")
-        trade = next((p for p in open_positions if p['symbol'] == symbol), None)
-        if trade:
-            action_result = portfolio_service.update_targets(db, user_id, trade['id'], sl=sl, tp=tp)
+            tool_result = {"success": False, "error": "Unknown tool"}
+
+            if function_name == "search_market_data":
+                query = arguments.get("query", "")
+                ticker = openai_service.get_ticker_suggestion(query)
+                info = portfolio_service.market.get_stock_info(ticker)
+                tool_result = {"suggested_ticker": ticker, "market_info": info}
+
+            elif function_name == "execute_trade":
+                ticker = arguments.get("ticker", "").upper()
+                action = arguments.get("action", "").lower()
+                amount = float(arguments.get("amount", 0))
+
+                if action == "buy":
+                    price = portfolio_service.market.get_current_price(ticker)
+                    if not price:
+                        tool_result = {"success": False, "error": f"Prix pour {ticker} indisponible."}
+                    else:
+                        qty = amount / price
+                        tool_result = portfolio_service.open_position(db, user_id, symbol=ticker, price=price, qty=qty, justification="Achat via assistant IA")
+                elif action == "sell":
+                    # On cherche la première position ouverte pour ce ticker
+                    trade = next((p for p in open_positions if p['symbol'] == ticker), None)
+                    if trade:
+                        tool_result = portfolio_service.close_position(db, user_id, trade['id'])
+                    else:
+                        tool_result = {"success": False, "error": f"Aucune position ouverte trouvée pour {ticker}."}
+
+            # On ajoute le résultat de l'outil à l'historique
+            messages.append({
+                "role": "tool",
+                "tool_call_id": tool_call.id,
+                "name": function_name,
+                "content": json.dumps(tool_result)
+            })
+
+        # Relance l'appel avec les résultats
+        response_msg = openai_service.get_tool_calling_response(messages, context)
+        if isinstance(response_msg, dict):
+            response_text = response_msg.get("content", "Erreur IA après outil")
         else:
-            action_result = {"success": False, "error": f"Aucune position ouverte pour {symbol}"}
+            response_text = response_msg.content
 
-    elif intent == "set_risk_profile":
-        profile = params.get("profile", "moderate")
-        valid_profiles = ["aggressive", "moderate", "conservative"]
-        if profile in valid_profiles:
-            # Mise à jour de la variable d'environnement en runtime
-            os.environ["RISK_PROFILE"] = profile
-            action_result = {"success": True, "new_profile": profile}
-            response_text += f"\n\n✅ Profil de risque mis à jour : **{profile}**"
-        else:
-            action_result = {"success": False, "error": f"Profil invalide: {profile}"}
-
-    elif intent == "withdraw":
-        amount = params.get("amount", 0)
-        action_result = portfolio_service.withdraw(db, user_id, amount)
-
-    elif intent == "reset":
-        # Note: reset_account is not yet implemented in service, but we should pass user_id if it was
-        action_result = {"success": False, "error": "Reset not implemented for multi-user yet"}
+    else:
+        response_text = response_msg.content
 
     return {
-        "response": response_text,
-        "intent": intent,
-        "action_result": action_result
+        "response": response_text
     }

@@ -51,12 +51,9 @@ export default function Header({ onSearch, onOpenAccount, userProfile }) {
             <div className="max-w-[1600px] mx-auto px-6 py-3 flex items-center justify-between">
                 {/* Logo & Titre */}
                 <div className="flex items-center gap-3">
-                    <div className="w-9 h-9 rounded-lg bg-gradient-to-br from-sky-500 to-blue-600 flex items-center justify-center shadow-lg">
-                        <span className="text-white font-bold text-sm">TB</span>
-                    </div>
-                    <div>
-                        <h1 className="font-bold text-base text-white leading-tight">Trading Bach Bot</h1>
-                        <span className="text-[11px] text-gray-500">V1 — Simulation</span>
+                    <img src="/logo-axiom.png" alt="Axiom Logo" className="h-10 w-auto object-contain" />
+                    <div className="hidden sm:block">
+                        <span className="text-[11px] text-gray-500 block">V1 — Simulation</span>
                     </div>
                 </div>
 

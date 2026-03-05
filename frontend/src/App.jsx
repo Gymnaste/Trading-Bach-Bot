@@ -1,5 +1,5 @@
 /**
- * App.jsx — Routeur principal de Trading Bach Bot.
+ * App.jsx — Routeur principal d'Axiom.
  * Routes :
  *   /          → Landing Page (Lovable)
  *   /login     → Page de connexion

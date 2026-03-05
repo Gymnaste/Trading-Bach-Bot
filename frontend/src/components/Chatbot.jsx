@@ -21,12 +21,13 @@ export default function Chatbot() {
         if (!input.trim()) return
 
         const userMessage = { role: 'user', content: input }
-        setMessages(prev => [...prev, userMessage])
+        const updatedMessages = [...messages, userMessage]
+        setMessages(updatedMessages)
         setInput('')
         setLoading(true)
 
         try {
-            const res = await chatAPI.send(input)
+            const res = await chatAPI.send(updatedMessages)
             const botMessage = { role: 'assistant', content: res.data.response }
             setMessages(prev => [...prev, botMessage])
         } catch (error) {
@@ -43,9 +44,21 @@ export default function Chatbot() {
             {!isOpen && (
                 <button
                     onClick={() => setIsOpen(true)}
-                    className="w-14 h-14 rounded-full bg-sky-500 shadow-lg flex items-center justify-center text-white hover:scale-110 transition-transform"
+                    className="w-16 h-16 bg-gray-950/20 backdrop-blur-md relative flex items-center justify-center transition-all hover:scale-110 group animate-pulse-glow"
+                    style={{
+                        clipPath: 'polygon(50% 0%, 0% 100%, 100% 100%)',
+                        boxShadow: '0 0 20px hsl(187,100%,50%,0.3)',
+                    }}
                 >
-                    <span className="text-2xl">💬</span>
+                    {/* Border effect using an inner div */}
+                    <div
+                        className="absolute inset-[2px] bg-gray-900 flex items-center justify-center overflow-hidden"
+                        style={{ clipPath: 'polygon(50% 0%, 0% 100%, 100% 100%)' }}
+                    >
+                        <img src="/logo-axiom-symbol.png" alt="Axiom Chat" className="w-full h-full object-cover scale-125" />
+                    </div>
+                    {/* Outer glow overlay */}
+                    <div className="absolute inset-0 border-2 border-[hsl(187,100%,50%)]/50 opacity-40 group-hover:opacity-100 transition-opacity" style={{ clipPath: 'polygon(50% 0%, 0% 100%, 100% 100%)' }} />
                 </button>
             )}
 
@@ -53,7 +66,7 @@ export default function Chatbot() {
             {isOpen && (
                 <div className="w-80 h-96 bg-gray-900 border border-gray-800 rounded-xl shadow-2xl flex flex-col animate-fade-in overflow-hidden">
                     <div className="bg-gray-800 p-3 flex justify-between items-center border-b border-gray-700">
-                        <span className="font-bold text-white text-sm">Trading Bach Assistant</span>
+                        <span className="font-bold text-white text-sm">Axiom Assistant</span>
                         <button onClick={() => setIsOpen(false)} className="text-gray-400 hover:text-white">✕</button>
                     </div>
 

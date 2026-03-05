@@ -19,7 +19,7 @@ class OpenAIService:
             return "[IA désactivée] Ajoutez AI_ENABLED=true dans le .env et redémarrez pour utiliser le chatbot."
         try:
             system_prompt = (
-                "Tu es Trading Bach Bot, un assistant expert en bourse et trading. "
+                "Tu es Axiom, un assistant expert en bourse et trading. "
                 "Tu aides l'utilisateur à comprendre les marchés, analyser les actions et gérer son portefeuille. "
                 "Sois précis, professionnel et utilise des termes financiers corrects. "
                 f"Voici le contexte actuel du portefeuille : {context}"
@@ -39,42 +39,84 @@ class OpenAIService:
             logger.error(f"Erreur OpenAI : {e}")
             return "Désolé, je rencontre une difficulté technique pour répondre à votre question pour le moment."
 
-    def get_actionable_response(self, message: str, context: str = "") -> dict:
-        """Version évoluée du chat qui détecte des intentions d'action."""
+    def get_tool_calling_response(self, messages: list, context: str = ""):
+        """Envoie l'historique des messages à OpenAI avec les outils définis."""
         if not AI_ENABLED:
-            return {"response": "[IA désactivée] Ajoutez AI_ENABLED=true dans le .env pour activer le chatbot.", "intent": None, "params": {}}
+            return {"role": "assistant", "content": "[IA désactivée] Activez AI_ENABLED=true."}
+        
+        system_prompt = (
+            "Tu es Axiom, un assistant expert en bourse et trading. Tu aides l'utilisateur à"
+            " comprendre les marchés et à gérer son portefeuille de manière autonome.\n"
+            f"Contexte actuel : {context}\n"
+            "Tu as accès à des outils (tools) pour chercher des actions (search_market_data) et exécuter des trades (execute_trade).\n"
+            "N'hésite pas à utiliser ces outils quand l'utilisateur te demande d'agir ou de chercher des informations. "
+            "Si tu as besoin de plus de précisions pour un trade (quantité, ticker exact), pose la question à l'utilisateur."
+        )
+
+        # Insérer ou mettre à jour le message système
+        if not messages or messages[0].get("role") != "system":
+            messages.insert(0, {"role": "system", "content": system_prompt})
+        else:
+            messages[0]["content"] = system_prompt
+
+        chat_tools = [
+            {
+                "type": "function",
+                "function": {
+                    "name": "search_market_data",
+                    "description": "Recherche un ticker officiel (Yahoo Finance) ou des informations de marché à partir d'un nom d'entreprise ou d'un secteur (ex: pétrole).",
+                    "parameters": {
+                        "type": "object",
+                        "properties": {
+                            "query": {
+                                "type": "string",
+                                "description": "La recherche de l'utilisateur (nom d'entreprise, secteur, etc.)"
+                            }
+                        },
+                        "required": ["query"]
+                    }
+                }
+            },
+            {
+                "type": "function",
+                "function": {
+                    "name": "execute_trade",
+                    "description": "Exécute un ordre d'achat (buy) ou de vente (sell) sur le marché pour l'utilisateur.",
+                    "parameters": {
+                        "type": "object",
+                        "properties": {
+                            "ticker": {
+                                "type": "string",
+                                "description": "Le ticker boursier officiel (ex: AAPL, TSLA)."
+                            },
+                            "action": {
+                                "type": "string",
+                                "enum": ["buy", "sell"],
+                                "description": "L'action à effectuer : 'buy' pour acheter, 'sell' pour vendre."
+                            },
+                            "amount": {
+                                "type": "number",
+                                "description": "Le montant en dollars ($) de l'opération ou la quantité si l'utilisateur précise des unités (dans le doute, considère que ce sont des dollars)."
+                            }
+                        },
+                        "required": ["ticker", "action", "amount"]
+                    }
+                }
+            }
+        ]
+
         try:
-            system_prompt = (
-                "Tu es Trading Bach Bot, un assistant expert en bourse et trading. Tu aides l'utilisateur à"
-                " comprendre les marchés et à gérer son portefeuille.\n"
-                f"Contexte actuel : {context}\n"
-                "Si l'utilisateur exprime une intention d'action (vendre, acheter, modifier TP/SL, changer le profil de risque, retirer des fonds),"
-                " tu DOIS retourner un JSON avec ce format :\n"
-                '{"response": "<ta réponse naturelle>", "intent": "<action|null>", "params": {<params>}}\n'
-                "Actions possibles et leurs params :\n"
-                '- "sell": {"symbol": "XXX"} ou {"trade_id": 123}\n'
-                '- "update_targets": {"symbol": "XXX", "stop_loss": float|null, "take_profit": float|null}\n'
-                '- "set_risk_profile": {"profile": "aggressive"|"moderate"|"conservative"}\n'
-                '- "withdraw": {"amount": float}\n'
-                '- "reset": {}\n'
-                "Si aucune action n'est demandée, mets intent à null et params à {}."
-                " Sois précis, professionnel, en français."
-            )
             response = client.chat.completions.create(
                 model=self.model,
-                messages=[
-                    {"role": "system", "content": system_prompt},
-                    {"role": "user", "content": message}
-                ],
-                response_format={"type": "json_object"},
+                messages=messages,
+                tools=chat_tools,
                 temperature=0.6,
-                max_tokens=400
+                max_tokens=500
             )
-            result = json.loads(response.choices[0].message.content)
-            return result
+            return response.choices[0].message
         except Exception as e:
-            logger.error(f"Erreur OpenAI chat actionnable : {e}")
-            return {"response": "Désolé, erreur technique.", "intent": None, "params": {}}
+            logger.error(f"Erreur OpenAI Tool Calling : {e}")
+            return {"role": "assistant", "content": "Désolé, erreur technique lors de l'analyse."}
 
     def analyze_market_signal(self, symbol: str, indicators: dict, sentiment: float, portfolio_context: str) -> dict:
         """Demande à l'IA d'analyser le marché et de retourner une décision au format JSON."""
@@ -168,3 +210,54 @@ class OpenAIService:
             return response.choices[0].message.content.strip().upper()
         except Exception:
             return query.upper()
+
+    def get_autonomous_decision(self, ticker: str, history: list, news: list, balance: float) -> dict:
+        """
+        Analyse les données OHLC et les news pour prendre une décision de trading 100% autonome.
+        """
+        if not AI_ENABLED:
+            return {"action": "HOLD", "reasoning": "IA désactivée"}
+
+        try:
+            system_prompt = (
+                "Tu es le gestionnaire de fonds principal de Axiom. "
+                "Ton objectif est de maximiser les profits tout en gérant strictement le risque. "
+                "Tu reçois des données techniques (OHLC) et les dernières news. "
+                "Tu dois décider si une opportunité existe. \n"
+                "Règles strictes :\n"
+                "1. Investissement max : 5% du balance actuel par trade.\n"
+                "2. Réponds UNIQUEMENT en JSON structuré.\n"
+                "3. Si tu achètes, définis obligatoirement un stop_loss (SL) et un take_profit (TP) cohérents.\n"
+                "Format attendu :\n"
+                "{\n"
+                '  "action": "BUY" | "SELL" | "HOLD",\n'
+                '  "amount_pct": float (0.0 à 0.05),\n'
+                '  "stop_loss": float,\n'
+                '  "take_profit": float,\n'
+                '  "reasoning": "explication détaillée du choix"\n'
+                "}"
+            )
+
+            user_message = (
+                f"--- DONNÉES POUR {ticker} ---\n"
+                f"Balance actuel : ${balance:.2f}\n"
+                f"Historique récent (OHLC) : {json.dumps(history[-20:])}\n"
+                f"Dernières news : {json.dumps(news)}\n\n"
+                "Quelle est ta décision ?"
+            )
+
+            response = client.chat.completions.create(
+                model=self.model,
+                messages=[
+                    {"role": "system", "content": system_prompt},
+                    {"role": "user", "content": user_message}
+                ],
+                response_format={"type": "json_object"},
+                temperature=0.3,
+                max_tokens=400
+            )
+
+            return json.loads(response.choices[0].message.content)
+        except Exception as e:
+            logger.error(f"Erreur get_autonomous_decision pour {ticker}: {e}")
+            return {"action": "HOLD", "reasoning": f"Erreur technique: {str(e)}"}

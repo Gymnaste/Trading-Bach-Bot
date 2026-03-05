@@ -91,3 +91,10 @@ def deposit(
 ):
     """Ajouter des fonds au solde liquide (sans toucher aux positions)."""
     return service.deposit(db, user_id, amount)
+
+@router.get("/activity")
+def get_activity_logs(db: Session = Depends(get_db), user_id: str = Depends(get_current_user_id)):
+    """Récupère les derniers logs d'activité de l'IA."""
+    from app.database import ActivityLog
+    logs = db.query(ActivityLog).filter(ActivityLog.user_id == user_id).order_by(ActivityLog.timestamp.desc()).limit(20).all()
+    return logs

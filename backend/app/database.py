@@ -1,5 +1,5 @@
 """
-database.py — Configuration SQLAlchemy + modèles de tables pour Trading Bach Bot V1
+database.py — Configuration SQLAlchemy + modèles de tables pour Axiom V1
 Base de données SQLite locale. Toutes les tables définies ici.
 """
 from datetime import datetime
@@ -49,7 +49,19 @@ class Trade(Base):
     stop_loss = Column(Float, nullable=True)
     take_profit = Column(Float, nullable=True)
     justification = Column(Text, nullable=True)
+    ai_reasoning = Column(Text, nullable=True)
     pnl = Column(Float, nullable=True)  # Profit & Loss en $锋
+
+
+class ActivityLog(Base):
+    """Journal d'activité de l'IA Axiom."""
+    __tablename__ = "activity_logs"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(String(100), nullable=False, index=True)
+    message = Column(Text, nullable=False)
+    type = Column(String(20), default="INFO")  # INFO | BUY | SELL | ERROR
+    timestamp = Column(DateTime, default=datetime.utcnow)
 
 
 class PortfolioHistory(Base):

@@ -12,6 +12,7 @@ import Chatbot from '../components/Chatbot'
 import StockDetailsModal from '../components/StockDetailsModal'
 import ManualTradeModal from '../components/ManualTradeModal'
 import AccountPanel from '../components/AccountPanel'
+import ActivityLog from '../components/ActivityLog'
 import { useAuth } from '../context/AuthContext'
 
 export default function Dashboard() {
@@ -47,8 +48,13 @@ export default function Dashboard() {
                         <PositionsTable onSelectStock={setSelectedStock} key={refreshKey} />
                     </div>
                 </div>
-                <div className="lg:col-span-1 h-[calc(100vh-140px)]">
-                    <SignalPanel onSelectStock={setSelectedStock} />
+                <div className="lg:col-span-1 flex flex-col gap-6 h-[calc(100vh-140px)]">
+                    <div className="flex-1 overflow-hidden">
+                        <SignalPanel onSelectStock={setSelectedStock} />
+                    </div>
+                    <div className="h-[250px]">
+                        <ActivityLog />
+                    </div>
                 </div>
             </main>
 

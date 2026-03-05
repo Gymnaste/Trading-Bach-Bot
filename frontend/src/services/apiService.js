@@ -9,6 +9,9 @@ const API = axios.create({
     timeout: 120000,
 })
 
+console.log("Axiom API Service loaded - v1.1 (with getActivity)");
+// Cache buster: 2026-03-05 14:26
+
 // Ajouter le token Supabase à chaque requête
 API.interceptors.request.use(async (config) => {
     // Récupérer la session depuis le localStorage (géré par Supabase)
@@ -45,6 +48,7 @@ export const portfolioAPI = {
     updateTargets: (tradeId, stopLoss, takeProfit) => API.patch(`/portfolio/position/${tradeId}/targets`, { stop_loss: stopLoss, take_profit: takeProfit }),
     withdraw: (amount) => API.post('/portfolio/withdraw', { amount }),
     deposit: (amount) => API.post('/portfolio/deposit', { amount }),
+    getActivity: () => API.get('/portfolio/activity'),
 }
 
 export const signalsAPI = {
@@ -69,7 +73,7 @@ export const marketAPI = {
 }
 
 export const chatAPI = {
-    send: (message) => API.post('/chat', { message }),
+    send: (messages) => API.post('/chat', { messages }),
 }
 
 export default API

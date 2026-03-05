@@ -61,10 +61,9 @@ export default function AuthPage({ defaultTab = 'login' }) {
             <div className="w-full max-w-md relative">
                 {/* Logo & Titre */}
                 <div className="text-center mb-8">
-                    <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-gradient-to-br from-sky-500 to-blue-600 shadow-xl shadow-sky-500/30 mb-4">
-                        <span className="text-white font-bold text-2xl">TB</span>
+                    <div className="flex justify-center mb-4">
+                        <img src="/logo-axiom.png" alt="Axiom Logo" className="h-16 w-auto object-contain drop-shadow-[0_0_15px_rgba(34,211,238,0.3)]" />
                     </div>
-                    <h1 className="text-2xl font-bold text-white">Trading Bach Bot</h1>
                     <p className="text-gray-500 text-sm mt-1">Plateforme de trading algorithmique IA</p>
                 </div>
 

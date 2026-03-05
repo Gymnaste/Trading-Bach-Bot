@@ -6,11 +6,15 @@ from app.core.scheduler import start_scheduler, stop_scheduler
 from app.services.trading_service import TradingService
 from app.routers import portfolio_router, signal_router, news_router, system_router, chat_router, market_router
 
-trading_service = TradingService()
+from app.services.trading_agent import trading_agent
+import asyncio
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     init_db()
+    
+    # Lancement de la boucle autonome dans une tâche séparée
+    asyncio.create_task(trading_agent.start_loop())
     
     def run_multi_user_cycle(db):
         user_ids = trading_service.portfolio.repo.get_all_user_ids(db)

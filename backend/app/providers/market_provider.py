@@ -32,8 +32,41 @@ class MarketProvider:
             logger.error(f"Error get_current_price {symbol}: {e}")
             return None
 
-    def get_multiple_prices(self, symbols: list[str]):
-        return {s: self.get_current_price(s) for s in symbols if self.get_current_price(s)}
+    def get_multiple_prices(self, symbols: list[str]) -> dict:
+        """Récupère les prix actuels pour une liste de symboles en une seule requête."""
+        if not symbols:
+            return {}
+        try:
+            logger.info(f"Fetching multiple prices for: {symbols}")
+            data = yf.download(symbols, period="1d", interval="1m", progress=False)
+            if data.empty:
+                logger.warning("yf.download returned empty data.")
+                return {s: self.get_current_price(s) for s in symbols if self.get_current_price(s)}
+            
+            prices = {}
+            for s in symbols:
+                try:
+                    if len(symbols) > 1:
+                        # yf.download can return MultiIndex or simple Index depending on data availability
+                        if isinstance(data.columns, pd.MultiIndex):
+                            price = data['Close'][s].dropna().iloc[-1]
+                        else:
+                            price = data['Close'].dropna().iloc[-1]
+                    else:
+                        price = data['Close'].dropna().iloc[-1]
+                    
+                    if not pd.isna(price):
+                        prices[s] = float(price)
+                except Exception as e:
+                    logger.warning(f"Failed to extract price for {s} from batch: {e}. Falling back.")
+                    p = self.get_current_price(s)
+                    if p: prices[s] = p
+            
+            logger.info(f"Successfully fetched prices: {list(prices.keys())}")
+            return prices
+        except Exception as e:
+            logger.error(f"Error in get_multiple_prices: {e}")
+            return {s: self.get_current_price(s) for s in symbols if self.get_current_price(s)}
 
     def get_stock_info(self, symbol: str) -> dict:
         """Récupère les informations de base de l'entreprise via yfinance."""
@@ -62,13 +95,28 @@ class MarketProvider:
             
             # Formater les données pour le frontend
             result = []
-            for date, row in hist.iterrows():
+            for date_val, row in hist.iterrows():
+                # Pour 1j, on garde l'heure. Pour le reste, seulement la date.
+                fmt = "%H:%M" if period == "1d" else "%Y-%m-%d"
                 result.append({
-                    "date": date.strftime("%Y-%m-%d"),
+                    "date": date_val.strftime(fmt),
                     "close": float(row["Close"]),
                     "volume": int(row["Volume"])
                 })
             return result
         except Exception as e:
             logger.error(f"Error fetch history {symbol}: {e}")
+            return []
+
+    def get_ticker_news(self, symbol: str, limit: int = 5) -> list[str]:
+        """Récupère les dernières actualités pour un ticker spécifique."""
+        try:
+            ticker = yf.Ticker(symbol)
+            news = ticker.news
+            if not news:
+                return []
+            # Retourne juste les titres pour le prompt IA
+            return [n.get("title") for n in news[:limit] if n.get("title")]
+        except Exception as e:
+            logger.error(f"Error fetching news for {symbol}: {e}")
             return []
